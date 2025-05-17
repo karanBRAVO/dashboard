@@ -407,6 +407,93 @@ app.get("/api/all-pods", async (req, res) => {
     }
 });
 
+// get all heirarchical queues
+app.get("/api/heirarchical-queues", async (req, res) => {
+    try {
+        // get all queues
+        const queues = await k8sApi.listClusterCustomObject({
+            group: "scheduling.volcano.sh",
+            version: "v1beta1",
+            plural: "queues",
+        });
+        // get all jobs
+        const jobs = await k8sApi.listClusterCustomObject({
+            group: "batch.volcano.sh",
+            version: "v1alpha1",
+            plural: "jobs",
+            pretty: true,
+        });
+        // get all pods
+        const pods = await k8sCoreApi.listPodForAllNamespaces();
+        // stores heirarchical queues
+        const h_queues = {};
+        // generate heirarchical queues
+        if (queues.items) {
+            queues.items.forEach((queue) => {
+                // current queue name
+                const qname = queue.metadata.name;
+                h_queues[qname] = {
+                    parent: null,
+                    uid: queue.metadata.uid,
+                    creationTimestamp: queue.metadata.creationTimestamp,
+                    state: queue.status.state,
+                    weight: queue.spec.weight,
+                    reclaimable: queue.spec.reclaimable,
+                    jobs: [],
+                };
+                // check current queue parent
+                if (queue.spec.parent) {
+                    h_queues[qname].parent = queue.spec.parent;
+                }
+                // check current queue jobs
+                jobs.items.forEach((job) => {
+                    if (job.spec.queue === qname) {
+                        const jobData = {
+                            name: job.metadata.name,
+                            namespace: job.metadata.namespace,
+                            creationTimestamp: job.metadata.creationTimestamp,
+                            uid: job.metadata.uid,
+                            state: getJobState(job),
+                            tasksCount: job.spec.tasks.length,
+                            tasks: job.spec.tasks,
+                        };
+                        h_queues[qname].jobs.push(jobData);
+                    }
+                });
+            });
+        }
+        // stores pods
+        const podMap = {};
+        // generate podMap
+        pods.items?.forEach((pod) => {
+            const jobName = pod.metadata.annotations?.["volcano.sh/job-name"];
+            const taskName = pod.metadata.annotations?.["volcano.sh/task-spec"];
+
+            if (!jobName || !taskName) return;
+
+            const key = `${jobName}::${taskName}`;
+            if (!podMap[key]) podMap[key] = [];
+            podMap[key].push({
+                name: pod.metadata.name,
+                namespace: pod.metadata.namespace,
+                uid: pod.metadata.uid,
+                phase: pod.status?.phase,
+                startTime: pod.status?.startTime,
+            });
+        });
+        res.json({
+            queues: h_queues,
+            podMap,
+            totalCount: Object.keys(h_queues).length,
+        });
+    } catch (error) {
+        console.error("Error generating heirarchical data:", error);
+        res.status(500).json({
+            error: "Failed to generate heirarchical data.",
+        });
+    }
+});
+
 const verifyVolcanoSetup = async () => {
     try {
         // Verify CRD access

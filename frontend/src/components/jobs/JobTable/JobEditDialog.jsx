@@ -67,6 +67,7 @@ const JobEditDialog = ({ open, job, onClose, onSave }) => {
                     options={{
                         minimap: { enabled: false },
                         automaticLayout: true,
+                        formatOnPaste: true,
                     }}
                 />
             </DialogContent>

@@ -13,6 +13,8 @@ import Pods from "./components/pods/Pods";
 import { ThemeProvider } from "@mui/material/styles";
 import { theme } from "./theme";
 import "bootstrap/dist/css/bootstrap.min.css";
+import TreeView from "./components/treeview/TreeView";
+import JobSchema from "./components/jobs/jobSchema/JobSchema";
 
 function App() {
     return (
@@ -27,6 +29,8 @@ function App() {
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="jobs" element={<Jobs />} />
                         <Route path="queues" element={<Queues />} />
+                        <Route path="/treeview" element={<TreeView />} />
+                        <Route path="/update-job" element={<JobSchema />} />
                         <Route path="pods" element={<Pods />} />
                     </Route>
                 </Routes>
