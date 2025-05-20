@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, Button, Tooltip, Typography } from "@mui/material";
 import axios from "axios";
 import { parseCPU, parseMemoryToMi } from "../utils"; // Adjust this path based on your project structure
 import SearchBar from "../Searchbar";
@@ -7,8 +7,12 @@ import QueueTable from "./QueueTable/QueueTable";
 import QueuePagination from "./QueuePagination";
 import QueueYamlDialog from "./QueueYamlDialog";
 import TitleComponent from "../Titlecomponent";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSitemap } from "@fortawesome/free-solid-svg-icons";
+import { useNavigate } from "react-router-dom";
 
 const Queues = () => {
+    const navigate = useNavigate();
     const [queues, setQueues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -229,6 +233,34 @@ const Queues = () => {
                     placeholder="Search queues..."
                     refreshLabel="Refresh Queues"
                 />
+                <Tooltip title="Heirarchical view" arrow>
+                    <Button
+                        variant="outlined"
+                        size="sm"
+                        className="rounded-pill px-4 py-2 d-flex align-items-center justify-content-center shadow-sm fw-medium border-2"
+                        style={{
+                            backgroundColor: "#ffffff",
+                            color: "#E34C26",
+                            transition: "all 0.3s ease",
+                            height: "35px",
+                            gap: "5px",
+                            margin: "10px 5px",
+                        }}
+                        onClick={() => navigate("/treeview")}
+                    >
+                        <FontAwesomeIcon
+                            icon={faSitemap}
+                            style={{ color: "#E34C26" }}
+                        />
+                        <Typography
+                            variant="subtitle2"
+                            component={"span"}
+                            style={{ textTransform: "capitalize" }}
+                        >
+                            Tree View
+                        </Typography>
+                    </Button>
+                </Tooltip>
             </Box>
             <QueueTable
                 sortedQueues={sortedQueues}

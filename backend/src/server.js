@@ -4,8 +4,10 @@ import {
     CoreV1Api,
     CustomObjectsApi,
     KubeConfig,
+    Log,
 } from "@kubernetes/client-node";
 import yaml from "js-yaml";
+import { Transform } from "stream";
 
 export const app = express();
 app.use(cors({ origin: "*" }));
@@ -15,6 +17,72 @@ kc.loadFromDefault();
 
 const k8sApi = kc.makeApiClient(CustomObjectsApi);
 const k8sCoreApi = kc.makeApiClient(CoreV1Api);
+
+const log = new Log(kc);
+
+app.get("/api/pod/logs", async (req, res) => {
+    const { namespace, pod, container } = req.query;
+
+    const sseStream = new Transform({
+        transform(chunk, encoding, callback) {
+            const data = chunk.toString().trim().split("\n");
+            for (const line of data) {
+                res.write(`data: ${line}\n\n`);
+            }
+            callback();
+        },
+    });
+
+    if (!namespace || !pod || !container) {
+        return res
+            .status(400)
+            .json({ error: "Missing namespace, pod, or container" });
+    }
+
+    try {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Transfer-Encoding", "chunked");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.flushHeaders();
+
+        const logStream = await log.log(namespace, pod, container, sseStream, {
+            follow: true,
+            pretty: true,
+            timestamps: true,
+        });
+
+        req.on("close", () => {
+            console.log("Client disconnected");
+            logStream.abort();
+            res.end();
+        });
+    } catch (err) {
+        console.error("Error:", err);
+        res.status(500).json({ error: "Failed to fetch data" });
+    }
+});
+
+app.get("/api/usage", async (req, res) => {
+    try {
+        const nodeMetrics = await k8sApi.listClusterCustomObject({
+            group: "metrics.k8s.io",
+            version: "v1beta1",
+            plural: "nodes",
+            pretty: true,
+        });
+
+        res.status(200).json({
+            message: "Kubernetes api usage data.",
+            nodeMetrics: nodeMetrics,
+        });
+    } catch (err) {
+        console.error("Error:", err);
+        res.status(500).json({
+            error: "Failed to fetch metric data | Install the metric server",
+        });
+    }
+});
 
 app.get("/api/jobs", async (req, res) => {
     try {

@@ -7,9 +7,11 @@ import { fetchAllNamespaces } from "../utils";
 import PodsTable from "./PodsTable/PodsTable";
 import PodsPagination from "./PodsPagination";
 import PodDetailsDialog from "./PodDetailsDialog";
+import PodLogs from "./PodLogs";
 
 const Pods = () => {
     const [pods, setPods] = useState([]);
+    const [selectedPod, setSelectedPod] = useState(null);
     const [cachedPods, setCachedPods] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -107,6 +109,7 @@ const Pods = () => {
                 })
                 .join("\n");
 
+            setSelectedPod(pod);
             setSelectedPodName(pod.metadata.name);
             setSelectedPodYaml(formattedYaml);
             setOpenDialog(true);
@@ -173,12 +176,20 @@ const Pods = () => {
                 pagination={pagination}
                 onPaginationChange={handlePaginationChange}
             />
-            <PodDetailsDialog
+            {/* <PodDetailsDialog
                 open={openDialog}
                 podName={selectedPodName}
                 podYaml={selectedPodYaml}
                 onClose={handleCloseDialog}
-            />
+            /> */}
+            {openDialog && (
+                <PodLogs
+                    openDialog={openDialog}
+                    onClose={handleCloseDialog}
+                    pod={selectedPod}
+                    podYaml={selectedPodYaml}
+                />
+            )}
         </Box>
     );
 };
